@@ -50,7 +50,7 @@ import uuid
 
 async def message_cb(msg):
 	print(msg.subject) # 'reply.subject'
-	print(msg.data) # b'Hello World!'
+	print(msg.data) # b'Hello Gozo!'
 	print(msg.headers) # {'Gozo-Reply': 'Yes', 'Gozo-Id': 'c8d816dd-578b-47ff-84c1-031f3ee7ade3'}
 
 async def main():
@@ -79,7 +79,7 @@ import uuid
 
 async def message_cb(msg):
 	print(msg.subject) # 'reply.subject'
-	print(msg.data) # b'Hello World!'
+	print(msg.data) # b'Hello Gozo!'
 	print(msg.headers) # {'Gozo-Reply': 'Yes', 'Gozo-Id': 'c8d816dd-578b-47ff-84c1-031f3ee7ade3'}
 
 async def main():
