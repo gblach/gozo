@@ -53,8 +53,6 @@ pub async fn replyloop(nats: Client, kv: kv::Store, sched_mutex: SchedMutex) {
 		interval.tick().await;
 		let mut sched = sched_mutex.lock().await;
 
-		println!("Tick {}: {}", now(), sched.when.len());
-
 		if let Some(when) = sched.when.first() {
 			if *when <= now() {
 				let mut headers = HeaderMap::new();
