@@ -121,6 +121,8 @@ async fn main() -> Result<(), async_nats::Error> {
 		options = options.credentials_file(jwt).await?;
 	}
 
+	ctrlc::set_handler(|| std::process::exit(0)).ok();
+
 	let nats = async_nats::connect_with_options(address, options).await?;
 	let jetstream = async_nats::jetstream::new(nats.clone());
 	let kv = jetstream.create_key_value(kv::Config {

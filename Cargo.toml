@@ -13,6 +13,7 @@ categories = ["network-programming", "date-and-time"]
 argh = "0.1"
 async-nats = "0.34"
 bytes = "1.6"
+ctrlc = { version = "3.4", features = ["termination"] }
 dotenv = "0.15"
 futures = "0.3"
 rmp-serde = "1.3"

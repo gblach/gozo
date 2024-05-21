@@ -10,4 +10,3 @@ FROM docker.io/almalinux/9-micro
 COPY --from=builder /app/target/release/gozo /usr/local/bin
 
 CMD ["gozo"]
-STOPSIGNAL SIGKIL
