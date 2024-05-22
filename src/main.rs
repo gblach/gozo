@@ -93,8 +93,8 @@ impl Args {
 #[tokio::main]
 async fn main() -> Result<(), async_nats::Error> {
 	let args: Args = argh::from_env();
-	dotenv::from_filename("./gozo.env").ok();
-	dotenv::from_filename("/etc/gozo.env").ok();
+	dotenvy::from_filename("./gozo.env").ok();
+	dotenvy::from_filename("/etc/gozo.env").ok();
 
 	let address = args.get("address", Some("nats://localhost:4222".to_string())).unwrap();
 
