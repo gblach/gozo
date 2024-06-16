@@ -11,11 +11,16 @@ use std::sync::Arc;
 use std::time::{ Duration, SystemTime };
 use tokio::sync::{ Mutex, MutexGuard };
 
+#[derive(Clone, Serialize, Deserialize)]
+pub struct Entry {
+	when: u64,
+	subject: String,
+	payload: bytes::Bytes,
+}
+
 #[derive(Clone)]
 pub struct Sched {
-	pub when: Vec<u64>,
-	pub subject: Vec<String>,
-	pub payload: Vec<bytes::Bytes>,
+	pub entry: Vec<Entry>,
 	pub id: Vec<Option<String>>,
 	pub id_loc: BTreeMap<String, usize>,
 }
@@ -23,20 +28,11 @@ pub struct Sched {
 impl Sched {
 	pub fn new() -> Sched {
 		Sched {
-			when: Vec::new(),
-			subject: Vec::new(),
-			payload: Vec::new(),
+			entry: Vec::new(),
 			id: Vec::new(),
 			id_loc: BTreeMap::new(),
 		}
 	}
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct KvSched {
-	when: u64,
-	subject: String,
-	payload: bytes::Bytes,
 }
 
 pub type SchedMutex = Arc<Mutex<Sched>>;
@@ -53,8 +49,8 @@ pub async fn replyloop(nats: Client, kv: kv::Store, sched_mutex: SchedMutex) {
 		interval.tick().await;
 		let mut sched = sched_mutex.lock().await;
 
-		if let Some(when) = sched.when.first() {
-			if *when <= now() {
+		if let Some(entry) = sched.entry.first() {
+			if entry.when <= now() {
 				let mut headers = HeaderMap::new();
 				headers.insert("Gozo-Reply", "Yes");
 				if let Some(id) = &sched.id.first().unwrap() {
@@ -63,15 +59,16 @@ pub async fn replyloop(nats: Client, kv: kv::Store, sched_mutex: SchedMutex) {
 				}
 
 				let _ = nats.publish_with_headers(
-					sched.subject.first().unwrap().clone(), headers,
-					sched.payload.first().unwrap().clone()).await;
+					entry.subject.clone(), headers,
+					entry.payload.clone()).await;
 
-				sched.when.remove(0);
-				sched.subject.remove(0);
-				sched.payload.remove(0);
+				sched.entry.remove(0);
 				if let Some(id) = sched.id.remove(0) {
 					sched.id_loc.remove(&id);
-					let _ = kv.delete(id).await;
+					let kv = kv.clone();
+					tokio::spawn(async move {
+						let _ = kv.delete(id).await;
+					});
 				}
 
 				interval.reset_immediately();
@@ -91,9 +88,7 @@ fn get_when(when: &str) -> Result<u64, std::num::ParseIntError> {
 
 fn schedule_delete(sched: &mut SchedGuard<'_>, id: String) {
 	if let Some(idx) = sched.id_loc.remove(&id) {
-		sched.when.remove(idx);
-		sched.subject.remove(idx);
-		sched.payload.remove(idx);
+		sched.entry.remove(idx);
 		sched.id.remove(idx);
 	}
 }
@@ -111,24 +106,21 @@ pub async fn schedule(kv: kv::Store, sched_mutex: SchedMutex, msg: Message) {
 					None
 				};
 
-				let idx = sched.when.partition_point(|&x| x <= when);
+				let idx = sched.entry.partition_point(|x| x.when <= when);
 
-				sched.when.insert(idx, when);
-				sched.subject.insert(idx, reply.to_string());
-				sched.payload.insert(idx, msg.payload.clone());
+				let entry = Entry {
+					when,
+					subject: reply.to_string(),
+					payload: msg.payload,
+				};
+
+				sched.entry.insert(idx, entry.clone());
 				sched.id.insert(idx, id.clone());
 
 				if let Some(id) = id {
 					sched.id_loc.insert(id.clone(), idx);
-
-					let value = KvSched {
-						when,
-						subject: reply.to_string(),
-						payload: msg.payload,
-					};
-					let value =
-						rmp_serde::to_vec_named(&value).unwrap();
-					let _ = kv.put(id, value.into()).await;
+					let entry = rmp_serde::to_vec_named(&entry).unwrap();
+					let _ = kv.put(id, entry.into()).await;
 				}
 			}
 		} else if let Some(id) = headers.get("Gozo-Del-Id") {
@@ -146,13 +138,11 @@ pub async fn schedule_load(kv: kv::Store, sched_mutex: SchedMutex)
 	let mut sched = sched_mutex.lock().await;
 
 	while let Some(id) = ids.try_next().await? {
-		let val = kv.get(id.clone()).await?.unwrap();
-		let val: KvSched = rmp_serde::from_slice(&val).unwrap();
-		let idx = sched.when.partition_point(|&x| x <= val.when);
+		let entry = kv.get(id.clone()).await?.unwrap();
+		let entry: Entry = rmp_serde::from_slice(&entry).unwrap();
+		let idx = sched.entry.partition_point(|x| x.when <= entry.when);
 
-		sched.when.insert(idx, val.when);
-		sched.subject.insert(idx, val.subject.to_string());
-		sched.payload.insert(idx, val.payload.clone());
+		sched.entry.insert(idx, entry);
 		sched.id.insert(idx, Some(id.clone()));
 		sched.id_loc.insert(id, idx);
 	}

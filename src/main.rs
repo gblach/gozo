@@ -136,7 +136,7 @@ async fn main() -> Result<(), async_nats::Error> {
 
 	let mut sub = nats.subscribe("gozo").await?;
 	while let Some(msg) = sub.next().await {
-		gozo::schedule(kv.clone(), sched.clone(), msg).await;
+		tokio::spawn(gozo::schedule(kv.clone(), sched.clone(), msg));
 	}
 
 	Ok(())
