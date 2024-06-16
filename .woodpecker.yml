@@ -1,3 +1,8 @@
+when:
+  - branch: main
+    event: push
+  - event: tag
+
 matrix:
   RUST: [stable, beta, nightly]
 
