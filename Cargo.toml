@@ -1,7 +1,7 @@
 [package]
 name = "gozo"
 version = "0.1.1"
-edition = "2021"
+edition = "2024"
 description = "Message scheduler for NATS."
 readme = "README.md"
 repository = "https://codeberg.org/gblach/gozo"
@@ -11,7 +11,7 @@ categories = ["network-programming", "date-and-time"]
 
 [dependencies]
 argh = "0.1"
-async-nats = "0.35"
+async-nats = "0.39"
 bytes = "1.6"
 ctrlc = { version = "3.4", features = ["termination"] }
 dotenvy = "0.15"
