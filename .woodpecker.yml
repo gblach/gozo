@@ -9,13 +9,16 @@ matrix:
 steps:
   test:
     image: rust:1-slim
-    environment: [CARGO_TERM_COLOR=always]
+    environment:
+      CARGO_TERM_COLOR: always
     commands:
+      - export 
       - rustup default $RUST
       - cargo check
   clippy:
     image: rust:1-slim
-    environment: [CARGO_TERM_COLOR=always]
+    environment:
+      CARGO_TERM_COLOR: always
     commands:
       - rustup component add clippy
       - cargo clippy
